@@ -1,0 +1,52 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+.province-label-text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: bold;
+  color: #d39e00;
+  text-shadow: 0 0 3px white;
+  pointer-events: none;
+}
+
+.leaflet-container {
+  background: #fff;
+}
+
+/* .block-square {
+  width: 8px;
+  height: 8px;
+  background: #1976d2;
+  border: 1px solid #fff;
+} */
+
+.leaflet-bottom.leaflet-right {
+  display: none;
+}
+
+.container-center {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.left-map {
+  min-width: 30%;
+}
+
