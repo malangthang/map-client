@@ -1,14 +1,19 @@
+// BlockLayer.jsx
 import { useEffect, useState } from "react";
 import { GeoJSON, useMap } from "react-leaflet";
 import L from "leaflet";
 import blockApi from "../../../api/blockApi";
 
-export default function BlockLayer({ provinceId, onBlockClick }) {
+export default function BlockLayer({
+  provinceId,
+  selectedBlocks,
+  setSelectedBlocks,
+}) {
   const [blocks, setBlocks] = useState(null);
   const [hoveredId, setHoveredId] = useState(null);
   const map = useMap();
 
-  // Hàm load block theo bbox + zoom
+  // Load block theo bbox + zoom
   const loadBlocks = async () => {
     if (!map) return;
     try {
@@ -31,20 +36,15 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
 
   useEffect(() => {
     if (!map) return;
-
-    // Load lần đầu
     loadBlocks();
 
-    // Lắng nghe move và zoom
     map.on("moveend", loadBlocks);
     map.on("zoomend", () => {
       const z = map.getZoom();
       if (z > 12) {
-        // Khóa zoom tại mức hiện tại
         map.setMinZoom(z);
         map.setMaxZoom(z);
       } else {
-        // Trả lại range zoom bình thường
         map.setMinZoom(1);
         map.setMaxZoom(22);
       }
@@ -61,11 +61,19 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
   // Style cho block
   const blockStyle = (feature) => {
     const id = feature.properties?.id;
+    const isSelected = (selectedBlocks || []).some(
+      (b) => b.properties.id === id
+    );
+
     return {
-      color: hoveredId === id ? "#d62828" : "#264653",
-      weight: 1,
-      fillColor: hoveredId === id ? "#f77f00" : "#2a9d8f",
-      fillOpacity: 0.15,
+      color: hoveredId === id ? "#d62828" : isSelected ? "#1d3557" : "#264653",
+      weight: isSelected ? 3 : 1,
+      fillColor: isSelected
+        ? "#e9c46a"
+        : hoveredId === id
+        ? "#f77f00"
+        : "#2a9d8f",
+      fillOpacity: isSelected ? 0.5 : 0.15,
     };
   };
 
@@ -77,8 +85,16 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
       mouseout: () => setHoveredId(null),
       click: () => {
         const zoom = map.getZoom();
-        if (zoom > 12 && onBlockClick) {
-          onBlockClick(feature); // ✅ chỉ cho chọn khi zoom > 12
+        if (zoom > 12) {
+          // ✅ Toggle chọn/deselect block
+          setSelectedBlocks((prev) => {
+            const exists = prev.some((b) => b.properties.id === id);
+            if (exists) {
+              return prev.filter((b) => b.properties.id !== id);
+            } else {
+              return [...prev, feature];
+            }
+          });
         }
       },
     });
@@ -91,7 +107,7 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
       data={blocks}
       style={blockStyle}
       onEachFeature={onEachBlock}
-      renderer={L.canvas()} // Canvas cho hiệu năng cao
+      renderer={L.canvas()}
     />
   );
 }

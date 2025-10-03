@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import BlockLayer from "../components/Map/Layer/BlockLayer";
 import FitBounds from "../components/Map/FitBounds";
 import blockApi from "../api/blockApi";
-import { Modal, Input, Button, Form, message } from "antd";
+import { Modal, Input, Button, Form, message, Tag } from "antd";
 
 // Component nhỏ để khóa zoom khi zoom > 12
 function LockZoomOnHighLevel() {
@@ -32,9 +32,11 @@ export default function ProvinceDetail() {
   const { slug } = useParams();
   const [blocksGeoJSON, setBlocksGeoJSON] = useState(null);
 
+  // State chọn nhiều block
+  const [selectedBlocks, setSelectedBlocks] = useState([]);
+
   // Modal state
   const [openModal, setOpenModal] = useState(false);
-  const [selectedBlock, setSelectedBlock] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const [form] = Form.useForm();
@@ -62,30 +64,30 @@ export default function ProvinceDetail() {
     loadBlocks();
   }, [slug]);
 
-  // Khi click block
-  const handleBlockClick = (feature) => {
-    setSelectedBlock(feature);
-    setOpenModal(true);
-  };
-
   // Submit form
   const handleSubmit = async () => {
+    if (selectedBlocks.length === 0) {
+      message.warning("Vui lòng chọn ít nhất 1 block để mua!");
+      return;
+    }
+
     try {
       const values = await form.validateFields();
       setLoading(true);
 
       await blockApi.claim({
         ...values,
-        block_ids: [selectedBlock.properties.id], // ✅ lấy id từ block click
+        block_ids: selectedBlocks.map((b) => b.properties.id), // ✅ lấy tất cả id
       });
 
-      message.success("Mua block thành công!");
+      message.success("Mua blocks thành công!");
       setLoading(false);
       setOpenModal(false);
       form.resetFields();
+      setSelectedBlocks([]); // clear sau khi mua
     } catch (err) {
       console.error("❌ Lỗi mua block:", err);
-      message.error("Mua block thất bại!");
+      message.error("Mua blocks thất bại!");
       setLoading(false);
     }
   };
@@ -102,21 +104,35 @@ export default function ProvinceDetail() {
           attribution="&copy; OpenStreetMap contributors"
         />
 
-        {/* Khóa zoom khi > 10 */}
         <LockZoomOnHighLevel />
 
         {/* Hiển thị blocks */}
         {blocksGeoJSON && (
-          <BlockLayer provinceId={slug} onBlockClick={handleBlockClick} />
+          <BlockLayer
+            provinceId={slug}
+            selectedBlocks={selectedBlocks}
+            setSelectedBlocks={setSelectedBlocks}
+          />
         )}
 
         {/* Fit map lần đầu */}
         {blocksGeoJSON && <FitBounds geojson={blocksGeoJSON} />}
       </MapContainer>
 
-      {/* Modal mua block */}
+      {/* Nút mở modal khi có block được chọn */}
+      {selectedBlocks.length > 0 && (
+        <Button
+          type="primary"
+          style={{ position: "absolute", top: 20, right: 20, zIndex: 1000 }}
+          onClick={() => setOpenModal(true)}
+        >
+          Mua {selectedBlocks.length} Block
+        </Button>
+      )}
+
+      {/* Modal mua blocks */}
       <Modal
-        title={`Mua Block #${selectedBlock?.properties?.id || ""}`}
+        title={`Mua ${selectedBlocks.length} Block`}
         open={openModal}
         onCancel={() => setOpenModal(false)}
         footer={[
@@ -133,6 +149,12 @@ export default function ProvinceDetail() {
           </Button>,
         ]}
       >
+        <div style={{ marginBottom: 12 }}>
+          {selectedBlocks.map((b) => (
+            <Tag key={b.properties.id}>#{b.properties.id}</Tag>
+          ))}
+        </div>
+
         <Form form={form} layout="vertical">
           <Form.Item
             name="name"
@@ -151,7 +173,7 @@ export default function ProvinceDetail() {
           </Form.Item>
 
           <Form.Item name="label" label="Label (tên block)">
-            <Input placeholder="My Block" />
+            <Input placeholder="My Blocks" />
           </Form.Item>
 
           <Form.Item name="color" label="Màu sắc">
