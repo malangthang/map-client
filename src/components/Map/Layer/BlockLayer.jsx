@@ -30,13 +30,30 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
   };
 
   useEffect(() => {
+    if (!map) return;
+
+    // Load lần đầu
     loadBlocks();
+
+    // Lắng nghe move và zoom
     map.on("moveend", loadBlocks);
-    map.on("zoomend", loadBlocks);
+    map.on("zoomend", () => {
+      const z = map.getZoom();
+      if (z > 12) {
+        // Khóa zoom tại mức hiện tại
+        map.setMinZoom(z);
+        map.setMaxZoom(z);
+      } else {
+        // Trả lại range zoom bình thường
+        map.setMinZoom(1);
+        map.setMaxZoom(22);
+      }
+      loadBlocks();
+    });
 
     return () => {
       map.off("moveend", loadBlocks);
-      map.off("zoomend", loadBlocks);
+      map.off("zoomend");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provinceId, map]);
@@ -59,8 +76,9 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
       mouseover: () => setHoveredId(id),
       mouseout: () => setHoveredId(null),
       click: () => {
-        if (onBlockClick) {
-          onBlockClick(feature); // ✅ truyền cả feature
+        const zoom = map.getZoom();
+        if (zoom > 12 && onBlockClick) {
+          onBlockClick(feature); // ✅ chỉ cho chọn khi zoom > 12
         }
       },
     });
@@ -73,7 +91,7 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
       data={blocks}
       style={blockStyle}
       onEachFeature={onEachBlock}
-      renderer={L.canvas()} // Canvas cho hiệu năng
+      renderer={L.canvas()} // Canvas cho hiệu năng cao
     />
   );
 }

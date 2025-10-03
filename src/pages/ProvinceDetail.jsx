@@ -1,10 +1,32 @@
 import { useParams } from "react-router-dom";
-import { MapContainer, TileLayer } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { useEffect, useState } from "react";
 import BlockLayer from "../components/Map/Layer/BlockLayer";
 import FitBounds from "../components/Map/FitBounds";
 import blockApi from "../api/blockApi";
-import { Modal, Input, Button, Form } from "antd";
+import { Modal, Input, Button, Form, message } from "antd";
+
+// Component nhỏ để khóa zoom khi zoom > 12
+function LockZoomOnHighLevel() {
+  const map = useMap();
+  useEffect(() => {
+    const handleZoom = () => {
+      const z = map.getZoom();
+      if (z > 12) {
+        map.setMinZoom(z);
+        map.setMaxZoom(z);
+      } else {
+        map.setMinZoom(1);
+        map.setMaxZoom(22);
+      }
+    };
+    map.on("zoomend", handleZoom);
+    return () => {
+      map.off("zoomend", handleZoom);
+    };
+  }, [map]);
+  return null;
+}
 
 export default function ProvinceDetail() {
   const { slug } = useParams();
@@ -23,7 +45,7 @@ export default function ProvinceDetail() {
       try {
         const res = await blockApi.getByProvince(slug);
 
-        if (res.type === "FeatureCollection") {
+        if (res?.type === "FeatureCollection") {
           setBlocksGeoJSON(res);
         } else if (Array.isArray(res)) {
           setBlocksGeoJSON({
@@ -57,11 +79,13 @@ export default function ProvinceDetail() {
         block_ids: [selectedBlock.properties.id], // ✅ lấy id từ block click
       });
 
+      message.success("Mua block thành công!");
       setLoading(false);
       setOpenModal(false);
       form.resetFields();
     } catch (err) {
       console.error("❌ Lỗi mua block:", err);
+      message.error("Mua block thất bại!");
       setLoading(false);
     }
   };
@@ -78,6 +102,9 @@ export default function ProvinceDetail() {
           attribution="&copy; OpenStreetMap contributors"
         />
 
+        {/* Khóa zoom khi > 10 */}
+        <LockZoomOnHighLevel />
+
         {/* Hiển thị blocks */}
         {blocksGeoJSON && (
           <BlockLayer provinceId={slug} onBlockClick={handleBlockClick} />
@@ -89,7 +116,7 @@ export default function ProvinceDetail() {
 
       {/* Modal mua block */}
       <Modal
-        title="Mua Block"
+        title={`Mua Block #${selectedBlock?.properties?.id || ""}`}
         open={openModal}
         onCancel={() => setOpenModal(false)}
         footer={[
