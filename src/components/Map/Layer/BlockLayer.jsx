@@ -11,17 +11,17 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
   // Hàm load block theo bbox + zoom
   const loadBlocks = async () => {
     if (!map) return;
-    const bounds = map.getBounds();
-    const zoom = map.getZoom();
-
-    const bbox = [
-      bounds.getWest(),
-      bounds.getSouth(),
-      bounds.getEast(),
-      bounds.getNorth(),
-    ];
-
     try {
+      const bounds = map.getBounds();
+      const zoom = map.getZoom();
+
+      const bbox = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth(),
+      ];
+
       const data = await blockApi.getByProvince(provinceId, bbox, zoom, 2000);
       setBlocks(data);
     } catch (err) {
@@ -41,20 +41,27 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [provinceId, map]);
 
-  const blockStyle = (feature) => ({
-    color: hoveredId === feature.properties?.id ? "#d62828" : "#264653",
-    weight: 1,
-    fillColor: hoveredId === feature.properties?.id ? "#f77f00" : "#2a9d8f",
-    fillOpacity: 0.1,
-  });
+  // Style cho block
+  const blockStyle = (feature) => {
+    const id = feature.properties?.id;
+    return {
+      color: hoveredId === id ? "#d62828" : "#264653",
+      weight: 1,
+      fillColor: hoveredId === id ? "#f77f00" : "#2a9d8f",
+      fillOpacity: 0.15,
+    };
+  };
 
+  // Event cho block
   const onEachBlock = (feature, layer) => {
     const id = feature.properties?.id;
     layer.on({
       mouseover: () => setHoveredId(id),
       mouseout: () => setHoveredId(null),
       click: () => {
-        if (id && onBlockClick) onBlockClick(id); // ✅ gọi callback, không navigate
+        if (onBlockClick) {
+          onBlockClick(feature); // ✅ truyền cả feature
+        }
       },
     });
   };
@@ -66,7 +73,7 @@ export default function BlockLayer({ provinceId, onBlockClick }) {
       data={blocks}
       style={blockStyle}
       onEachFeature={onEachBlock}
-      renderer={L.canvas()} // Bắt buộc dùng Canvas cho hiệu năng
+      renderer={L.canvas()} // Canvas cho hiệu năng
     />
   );
 }
