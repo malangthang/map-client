@@ -46,9 +46,6 @@ export default function ProvinceDetail() {
       {/* ✅ Hiển thị blocks (cha) */}
       {blocksGeoJSON && <BlockLayer provinceId={slug} />}
 
-      {/* ✅ Tự động hiện sub-blocks của các block cha trong viewport */}
-      {/* {blocksGeoJSON && <SubBlockLayer blocks={blocksGeoJSON} />} */}
-
       {/* ✅ Fit map lần đầu theo blocks */}
       {blocksGeoJSON && <FitBounds geojson={blocksGeoJSON} />}
     </MapContainer>
