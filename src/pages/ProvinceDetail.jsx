@@ -4,27 +4,34 @@ import { useEffect, useState } from "react";
 import BlockLayer from "../components/Map/Layer/BlockLayer";
 import FitBounds from "../components/Map/FitBounds";
 import blockApi from "../api/blockApi";
-import { Modal, Input, Button, Form, message, Tag } from "antd";
+import { Modal, Input, Button, Form, message, Tag, Row, Col } from "antd";
 
 // Component nhỏ để khóa zoom khi zoom > 12
 function LockZoomOnHighLevel() {
   const map = useMap();
+
   useEffect(() => {
     const handleZoom = () => {
       const z = map.getZoom();
       if (z > 12) {
-        map.setMinZoom(z);
-        map.setMaxZoom(z);
+        // ✅ Khóa không cho zoom nhỏ lại
+        map.setMinZoom(12);
+        map.setMaxZoom(z); // cho phép zoom in thêm
       } else {
+        // ✅ Nếu reset hoặc fitBounds đưa zoom <= 12 thì mở lại zoom nhỏ
         map.setMinZoom(1);
-        map.setMaxZoom(22);
+        map.setMaxZoom(16);
       }
     };
+
+    handleZoom(); // chạy ngay khi load
     map.on("zoomend", handleZoom);
+
     return () => {
       map.off("zoomend", handleZoom);
     };
   }, [map]);
+
   return null;
 }
 
@@ -151,26 +158,33 @@ export default function ProvinceDetail() {
       >
         <div style={{ marginBottom: 12 }}>
           {selectedBlocks.map((b) => (
-            <Tag key={b.properties.id}>#{b.properties.id}</Tag>
+            <Tag style={{ marginBottom: 8 }} key={b.properties.id}>
+              #{b.properties.id}
+            </Tag>
           ))}
         </div>
 
         <Form form={form} layout="vertical">
-          <Form.Item
-            name="name"
-            label="Tên người mua"
-            rules={[{ required: true, message: "Vui lòng nhập tên" }]}
-          >
-            <Input placeholder="Nguyễn Văn A" />
-          </Form.Item>
-
-          <Form.Item
-            name="phone"
-            label="Số điện thoại"
-            rules={[{ required: true, message: "Vui lòng nhập SĐT" }]}
-          >
-            <Input placeholder="0987xxxxxx" />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="name"
+                label="Tên người mua"
+                rules={[{ required: true, message: "Vui lòng nhập tên" }]}
+              >
+                <Input placeholder="Nguyễn Văn A" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="phone"
+                label="Số điện thoại"
+                rules={[{ required: true, message: "Vui lòng nhập SĐT" }]}
+              >
+                <Input placeholder="0987xxxxxx" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Form.Item name="label" label="Label (tên block)">
             <Input placeholder="My Blocks" />

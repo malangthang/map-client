@@ -46,7 +46,7 @@ export default function BlockLayer({
         map.setMaxZoom(z);
       } else {
         map.setMinZoom(1);
-        map.setMaxZoom(22);
+        map.setMaxZoom(16);
       }
       loadBlocks();
     });
@@ -67,13 +67,13 @@ export default function BlockLayer({
 
     return {
       color: hoveredId === id ? "#d62828" : isSelected ? "#1d3557" : "#264653",
-      weight: isSelected ? 3 : 1,
+      weight: isSelected ? 2 : 1,
       fillColor: isSelected
         ? "#e9c46a"
         : hoveredId === id
         ? "#f77f00"
         : "#2a9d8f",
-      fillOpacity: isSelected ? 0.5 : 0.15,
+      fillOpacity: isSelected ? 0.5 : 0.1,
     };
   };
 
