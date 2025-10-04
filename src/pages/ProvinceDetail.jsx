@@ -28,68 +28,6 @@ function LockZoomOnHighLevel() {
   return null;
 }
 
-// Preview các block
-function BlockPreview({ blocks, color, label, previewUrl }) {
-  return (
-    <div
-      style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}
-    >
-      {blocks.map((b) => (
-        <div
-          key={b.properties.id}
-          style={{
-            width: 80,
-            height: 20,
-            border: "1px solid #ccc",
-            borderRadius: 4,
-            position: "relative",
-            backgroundColor: color || "#eee",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
-        >
-          {label && (
-            <div
-              style={{
-                position: "relative",
-                top: 2,
-                left: 2,
-                fontSize: 10,
-                fontWeight: "bold",
-                color: "#000",
-              }}
-            >
-              {label}
-            </div>
-          )}
-          {previewUrl && (
-            <img
-              src={previewUrl}
-              alt="Preview"
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          )}
-          <div
-            style={{
-              position: "relative",
-              fontSize: 10,
-              fontWeight: "bold",
-              color: "#fff",
-              backgroundColor: "rgba(0,0,0,0.5)",
-              padding: "0 2px",
-              borderRadius: 2,
-            }}
-          >
-            #{b.properties.id}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function ProvinceDetail() {
   const { slug } = useParams();
   const [blocksGeoJSON, setBlocksGeoJSON] = useState(null);
@@ -217,12 +155,24 @@ export default function ProvinceDetail() {
           </Button>,
         ]}
       >
-        <BlockPreview
-          blocks={selectedBlocks}
-          color={form.getFieldValue("color")}
-          // label={form.getFieldValue("label")}
-          previewUrl={previewUrl}
-        />
+        {/* Hiển thị danh sách ID block đã chọn */}
+        <div style={{ marginBottom: 12 }}>
+          {selectedBlocks.map((b) => (
+            <span
+              key={b.properties.id}
+              style={{
+                display: "inline-block",
+                padding: "2px 6px",
+                margin: 4,
+                backgroundColor: "#eee",
+                borderRadius: 4,
+                fontSize: 12,
+              }}
+            >
+              #{b.properties.id}
+            </span>
+          ))}
+        </div>
 
         <Form form={form} layout="vertical">
           <Row gutter={16}>
