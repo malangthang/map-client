@@ -1,3 +1,4 @@
+import axios from "axios";
 import { API_BASE } from "../config";
 
 const blockApi = {
@@ -31,25 +32,41 @@ const blockApi = {
     }
   },
 
+  // Claim block(s)
   claim: async (payload) => {
     try {
       const res = await fetch(`${API_BASE}/blocks/claim`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to claim block(s)");
+      // Nếu server trả về HTML thay vì JSON (lỗi 500/404)
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (!res.ok) throw new Error(data.message || "Failed to claim block(s)");
+        return data;
+      } catch {
+        // text không phải JSON → lỗi server
+        throw new Error(`Server trả về không phải JSON: ${text.slice(0, 100)}...`);
       }
-
-      return await res.json();
     } catch (err) {
       console.error("❌ blockApi.claim error:", err);
       return null;
+    }
+  },
+
+  // Upload ảnh (multipart/form-data) dùng axios
+  uploadImage: async (formData) => {
+    try {
+      const res = await axios.post(`${API_BASE}/blocks/upload-image`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data; // { path: 'storage/blocks/abc.png' }
+    } catch (err) {
+      console.error("❌ blockApi.uploadImage error:", err.response?.data || err);
+      throw err;
     }
   },
 };

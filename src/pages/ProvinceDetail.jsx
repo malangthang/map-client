@@ -4,96 +4,164 @@ import { useEffect, useState } from "react";
 import BlockLayer from "../components/Map/Layer/BlockLayer";
 import FitBounds from "../components/Map/FitBounds";
 import blockApi from "../api/blockApi";
-import { Modal, Input, Button, Form, message, Tag, Row, Col } from "antd";
+import { Modal, Input, Button, Form, message, Row, Col, Upload } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 
-// Component nhỏ để khóa zoom khi zoom > 12
+// Khóa zoom khi > 12
 function LockZoomOnHighLevel() {
   const map = useMap();
-
   useEffect(() => {
     const handleZoom = () => {
       const z = map.getZoom();
       if (z > 12) {
-        // ✅ Khóa không cho zoom nhỏ lại
-        map.setMinZoom(12);
-        map.setMaxZoom(z); // cho phép zoom in thêm
+        map.setMinZoom(z);
+        map.setMaxZoom(z);
       } else {
-        // ✅ Nếu reset hoặc fitBounds đưa zoom <= 12 thì mở lại zoom nhỏ
         map.setMinZoom(1);
         map.setMaxZoom(16);
       }
     };
-
-    handleZoom(); // chạy ngay khi load
+    handleZoom();
     map.on("zoomend", handleZoom);
-
-    return () => {
-      map.off("zoomend", handleZoom);
-    };
+    return () => map.off("zoomend", handleZoom);
   }, [map]);
-
   return null;
+}
+
+// Preview các block
+function BlockPreview({ blocks, color, label, previewUrl }) {
+  return (
+    <div
+      style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 12 }}
+    >
+      {blocks.map((b) => (
+        <div
+          key={b.properties.id}
+          style={{
+            width: 80,
+            height: 20,
+            border: "1px solid #ccc",
+            borderRadius: 4,
+            position: "relative",
+            backgroundColor: color || "#eee",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          {label && (
+            <div
+              style={{
+                position: "relative",
+                top: 2,
+                left: 2,
+                fontSize: 10,
+                fontWeight: "bold",
+                color: "#000",
+              }}
+            >
+              {label}
+            </div>
+          )}
+          {previewUrl && (
+            <img
+              src={previewUrl}
+              alt="Preview"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          )}
+          <div
+            style={{
+              position: "relative",
+              fontSize: 10,
+              fontWeight: "bold",
+              color: "#fff",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              padding: "0 2px",
+              borderRadius: 2,
+            }}
+          >
+            #{b.properties.id}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function ProvinceDetail() {
   const { slug } = useParams();
   const [blocksGeoJSON, setBlocksGeoJSON] = useState(null);
-
-  // State chọn nhiều block
   const [selectedBlocks, setSelectedBlocks] = useState([]);
-
-  // Modal state
   const [openModal, setOpenModal] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [form] = Form.useForm();
 
-  // Load blocks 1 lần để FitBounds khi mở province
+  // Load blocks
   useEffect(() => {
     const loadBlocks = async () => {
       try {
         const res = await blockApi.getByProvince(slug);
-
-        if (res?.type === "FeatureCollection") {
-          setBlocksGeoJSON(res);
-        } else if (Array.isArray(res)) {
-          setBlocksGeoJSON({
-            type: "FeatureCollection",
-            features: res,
-          });
-        } else {
-          console.error("❌ Dữ liệu blocks không hợp lệ:", res);
-        }
+        if (res?.type === "FeatureCollection") setBlocksGeoJSON(res);
+        else if (Array.isArray(res))
+          setBlocksGeoJSON({ type: "FeatureCollection", features: res });
+        else console.error("Dữ liệu blocks không hợp lệ:", res);
       } catch (err) {
-        console.error("❌ Lỗi load blocks:", err);
+        console.error("Lỗi load blocks:", err);
       }
     };
     loadBlocks();
   }, [slug]);
 
+  // Upload ảnh
+  const handleUploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append("image", file);
+    try {
+      const res = await blockApi.uploadImage(formData);
+      return res.path;
+    } catch (err) {
+      console.error("Upload ảnh thất bại:", err);
+      message.error("Upload ảnh thất bại!");
+      return null;
+    }
+  };
+
   // Submit form
   const handleSubmit = async () => {
-    if (selectedBlocks.length === 0) {
-      message.warning("Vui lòng chọn ít nhất 1 block để mua!");
+    if (!selectedBlocks.length) {
+      message.warning("Vui lòng chọn ít nhất 1 block!");
       return;
     }
-
     try {
       const values = await form.validateFields();
       setLoading(true);
 
+      let imagePath = null;
+      if (values.image?.[0]?.originFileObj) {
+        imagePath = await handleUploadImage(values.image[0].originFileObj);
+        if (!imagePath) return setLoading(false);
+      }
+
       await blockApi.claim({
-        ...values,
-        block_ids: selectedBlocks.map((b) => b.properties.id), // ✅ lấy tất cả id
+        name: values.name,
+        phone: values.phone,
+        label: values.label || "",
+        color: values.color || "",
+        block_ids: selectedBlocks.map((b) => b.properties.id),
+        image_path: imagePath,
       });
 
       message.success("Mua blocks thành công!");
-      setLoading(false);
       setOpenModal(false);
       form.resetFields();
-      setSelectedBlocks([]); // clear sau khi mua
+      setSelectedBlocks([]);
+      setPreviewUrl(null);
+      setLoading(false);
     } catch (err) {
-      console.error("❌ Lỗi mua block:", err);
+      console.error("Lỗi mua block:", err);
       message.error("Mua blocks thất bại!");
       setLoading(false);
     }
@@ -110,10 +178,7 @@ export default function ProvinceDetail() {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap contributors"
         />
-
         <LockZoomOnHighLevel />
-
-        {/* Hiển thị blocks */}
         {blocksGeoJSON && (
           <BlockLayer
             provinceId={slug}
@@ -121,12 +186,9 @@ export default function ProvinceDetail() {
             setSelectedBlocks={setSelectedBlocks}
           />
         )}
-
-        {/* Fit map lần đầu */}
         {blocksGeoJSON && <FitBounds geojson={blocksGeoJSON} />}
       </MapContainer>
 
-      {/* Nút mở modal khi có block được chọn */}
       {selectedBlocks.length > 0 && (
         <Button
           type="primary"
@@ -137,7 +199,6 @@ export default function ProvinceDetail() {
         </Button>
       )}
 
-      {/* Modal mua blocks */}
       <Modal
         title={`Mua ${selectedBlocks.length} Block`}
         open={openModal}
@@ -156,13 +217,12 @@ export default function ProvinceDetail() {
           </Button>,
         ]}
       >
-        <div style={{ marginBottom: 12 }}>
-          {selectedBlocks.map((b) => (
-            <Tag style={{ marginBottom: 8 }} key={b.properties.id}>
-              #{b.properties.id}
-            </Tag>
-          ))}
-        </div>
+        <BlockPreview
+          blocks={selectedBlocks}
+          color={form.getFieldValue("color")}
+          // label={form.getFieldValue("label")}
+          previewUrl={previewUrl}
+        />
 
         <Form form={form} layout="vertical">
           <Row gutter={16}>
@@ -170,7 +230,7 @@ export default function ProvinceDetail() {
               <Form.Item
                 name="name"
                 label="Tên người mua"
-                rules={[{ required: true, message: "Vui lòng nhập tên" }]}
+                rules={[{ required: true }]}
               >
                 <Input placeholder="Nguyễn Văn A" />
               </Form.Item>
@@ -179,7 +239,7 @@ export default function ProvinceDetail() {
               <Form.Item
                 name="phone"
                 label="Số điện thoại"
-                rules={[{ required: true, message: "Vui lòng nhập SĐT" }]}
+                rules={[{ required: true }]}
               >
                 <Input placeholder="0987xxxxxx" />
               </Form.Item>
@@ -187,11 +247,39 @@ export default function ProvinceDetail() {
           </Row>
 
           <Form.Item name="label" label="Label (tên block)">
-            <Input placeholder="My Blocks" />
+            <Input placeholder="Khu B2" />
           </Form.Item>
 
           <Form.Item name="color" label="Màu sắc">
             <Input type="color" />
+          </Form.Item>
+
+          <Form.Item
+            name="image"
+            label="Ảnh minh họa"
+            valuePropName="fileList"
+            getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+          >
+            <Upload
+              listType="picture-card"
+              maxCount={1}
+              beforeUpload={() => false}
+              onChange={(info) => {
+                const file = info.fileList[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.readAsDataURL(file.originFileObj);
+                  reader.onload = () => setPreviewUrl(reader.result);
+                } else setPreviewUrl(null);
+              }}
+            >
+              {!previewUrl && (
+                <div>
+                  <UploadOutlined />
+                  <div style={{ marginTop: 8 }}>Chọn ảnh</div>
+                </div>
+              )}
+            </Upload>
           </Form.Item>
         </Form>
       </Modal>
